@@ -10,6 +10,11 @@ on:
 
 name: refresh-data
 
+env:
+  NEMPOINT_KEY: ${{ secrets.NEMPOINT_KEY }}
+  APIKEY: ${{ secrets.APIKEY }}
+  DEVICE: ${{ secrets.DEVICE }}
+
 jobs:
   refresh-data:
     runs-on: macOS-latest
