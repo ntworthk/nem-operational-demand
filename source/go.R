@@ -50,7 +50,7 @@ date_2 <- Sys.Date()
 operational_demand_daily <- glue(operational_demand_daily)
 
 df_day <- query_function(operational_demand_daily)
-
+print(df_day)
 
 df_check <- df_day |> 
   select(-LASTCHANGED) |>
