@@ -40,6 +40,10 @@ query_function <- function(query, convert_to_chr = FALSE) {
 #   pivot_wider(names_from = type, values_from = OPERATIONAL_DEMAND, names_prefix = "TOT_") |> 
 #   write_rds("data/max_mins.rds")
 
+Sys.getenv("NEMPOINT_KEY") == ""
+Sys.getenv("APIKEY") == ""
+Sys.getenv("DEVICE") == ""
+
 df_max_mins <- read_rds("data/max_mins.rds")
 
 operational_demand_daily <- read_file(file = "source/operational_demand_daily.sql")
