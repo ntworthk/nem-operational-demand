@@ -8,6 +8,7 @@
 /data/*
 !data/README.md
 !data/raw
+!data/max_mins.rds
 data/raw/*
 !data/raw/README.md
 !data/processed
