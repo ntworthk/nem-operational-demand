@@ -30,14 +30,14 @@ query_function <- function(query, convert_to_chr = FALSE) {
 
 # operational_demand_query <- read_file(file = "source/operational_demand_overall_query.sql")
 # 
-# query_function(operational_demand_query) |> 
-#   select(-RowNo) |> 
-#   group_by(MONTH, REGIONID) |> 
-#   mutate(type = ifelse(OPERATIONAL_DEMAND == min(OPERATIONAL_DEMAND), "MIN", "MAX")) |> 
-#   ungroup() |> 
+# query_function(operational_demand_query) |>
+#   select(-RowNo) |>
+#   group_by(MONTH, REGIONID) |>
+#   mutate(type = ifelse(OPERATIONAL_DEMAND == min(OPERATIONAL_DEMAND), "MIN", "MAX")) |>
+#   ungroup() |>
 #   arrange(REGIONID, MONTH) |>
-#   select(REGIONID, MONTH, type ,OPERATIONAL_DEMAND) |> 
-#   pivot_wider(names_from = type, values_from = OPERATIONAL_DEMAND, names_prefix = "TOT_") |> 
+#   select(REGIONID, MONTH, type ,OPERATIONAL_DEMAND) |>
+#   pivot_wider(names_from = type, values_from = OPERATIONAL_DEMAND, names_prefix = "TOT_") |>
 #   write_rds("data/max_mins.rds")
 
 df_max_mins <- read_rds("data/max_mins.rds")
@@ -50,6 +50,16 @@ date_2 <- Sys.Date()
 operational_demand_daily <- glue(operational_demand_daily)
 
 df_day <- query_function(operational_demand_daily)
+
+df_day <- df_day |> 
+  mutate(REGIONID = "AUS1") |> 
+  group_by(INTERVAL_DATETIME, REGIONID) |> 
+  summarise(
+    OPERATIONAL_DEMAND = sum(OPERATIONAL_DEMAND),
+    LASTCHANGED = max(LASTCHANGED),
+    .groups = "drop"
+  ) |> 
+  bind_rows(df_day)
 
 df_check <- df_day |> 
   select(-LASTCHANGED) |>
