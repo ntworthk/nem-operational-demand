@@ -41,6 +41,9 @@ query_function <- function(query, convert_to_chr = FALSE) {
 #   write_rds("data/max_mins.rds")
 
 df_max_mins <- read_rds("data/max_mins.rds")
+df_max_mins_overall <- df_max_mins |> 
+  group_by(REGIONID) |> 
+  summarise(TOT_MIN = min(TOT_MIN), TOT_MAX = max(TOT_MAX))
 
 operational_demand_daily <- read_file(file = "source/operational_demand_daily.sql")
 
@@ -83,11 +86,28 @@ df_check <- df_day |>
 
 if (nrow(df_check) > 0) {
   
+  overall_check <- df_check |> 
+    mutate(DEMAND = ifelse(TYPE == "MIN", OPERATIONAL_DEMAND_MIN, OPERATIONAL_DEMAND_MAX)) |> 
+    select(REGIONID, TYPE, DEMAND) |> 
+    left_join(df_max_mins_overall, by = "REGIONID") |> 
+    mutate(
+      TEST = ifelse(TYPE == "MAX", DEMAND > TOT_MAX, DEMAND < TOT_MAX)
+    ) |>
+    filter(TEST)
+  
+  if (nrow(overall_check) > 0) {
+    regionid <- overall_check$REGIONID[1]
+    i <- min(which(df_check$REGIONID == regionid))
+    type_additional <- " OVERALL "
+  } else {
+    i <- 1
+    type_additional <- ""
+  }
   
   RPushbullet::pbPost(
     type = "note",
     title = "New NEM record",
-    body = paste0(df_check$TYPE, " in ", df_check$REGIONID[1]),
+    body = paste0(df_check$TYPE[i], type_additional, " in ", df_check$REGIONID[i]),
     apikey = Sys.getenv("APIKEY"),
     devices = Sys.getenv("DEVICE")
   )
