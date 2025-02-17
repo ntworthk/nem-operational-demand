@@ -36,14 +36,23 @@ query_function <- function(query, convert_to_chr = FALSE) {
 #   mutate(type = ifelse(OPERATIONAL_DEMAND == min(OPERATIONAL_DEMAND), "MIN", "MAX")) |>
 #   ungroup() |>
 #   arrange(REGIONID, MONTH) |>
-#   select(REGIONID, MONTH, type ,OPERATIONAL_DEMAND) |>
-#   pivot_wider(names_from = type, values_from = OPERATIONAL_DEMAND, names_prefix = "TOT_") |>
+#   select(REGIONID, MONTH, INTERVAL_DATETIME, type ,OPERATIONAL_DEMAND) |>
+#   pivot_wider(names_from = type, values_from = c(OPERATIONAL_DEMAND, INTERVAL_DATETIME)) |> 
+#   rename(
+#     TOT_MIN = OPERATIONAL_DEMAND_MIN,
+#     TOT_MAX = OPERATIONAL_DEMAND_MAX,
+#     INT_MIN = INTERVAL_DATETIME_MIN,
+#     INT_MAX = INTERVAL_DATETIME_MAX
+#   ) |> 
 #   write_rds("data/max_mins.rds")
 
 df_max_mins <- read_rds("data/max_mins.rds")
 df_max_mins_overall <- df_max_mins |> 
   group_by(REGIONID) |> 
-  summarise(TOT_MIN = min(TOT_MIN), TOT_MAX = max(TOT_MAX))
+  summarise(
+    TOT_MIN = min(TOT_MIN), TOT_MAX = max(TOT_MAX),
+    INT_MIN = min(INT_MIN), INT_MAX = max(INT_MAX)
+  )
 
 operational_demand_daily <- read_file(file = "source/operational_demand_daily.sql")
 
@@ -98,7 +107,7 @@ if (nrow(df_check) > 0) {
   if (nrow(overall_check) > 0) {
     regionid <- overall_check$REGIONID[1]
     i <- min(which(df_check$REGIONID == regionid))
-    type_additional <- " OVERALL "
+    type_additional <- " OVERALL"
   } else {
     i <- 1
     type_additional <- ""
@@ -113,13 +122,15 @@ if (nrow(df_check) > 0) {
   )
   
   df_max_mins <- df_max_mins |> 
-    left_join(df_check, by = join_by(REGIONID, MONTH, TOT_MIN, TOT_MAX)) |> 
+    left_join(df_check, by = join_by(REGIONID, MONTH, TOT_MIN, TOT_MAX, INT_MIN, INT_MAX)) |> 
     replace_na(list(OPERATIONAL_DEMAND_MIN = Inf, OPERATIONAL_DEMAND_MAX = -Inf)) |> 
     mutate(
       TOT_MIN = pmin(TOT_MIN, OPERATIONAL_DEMAND_MIN),
-      TOT_MAX = pmax(TOT_MAX, OPERATIONAL_DEMAND_MAX)
+      TOT_MAX = pmax(TOT_MAX, OPERATIONAL_DEMAND_MAX),
+      INT_MIN = pmax(INT_MIN, INTERVAL_DATETIME_MIN, na.rm = TRUE),
+      INT_MAX = pmax(INT_MAX, INTERVAL_DATETIME_MAX, na.rm = TRUE)
     ) |> 
-    select(REGIONID, MONTH, TOT_MIN, TOT_MAX)
+    select(REGIONID, MONTH, TOT_MIN, TOT_MAX, INT_MIN, INT_MAX)
   
   write_rds(df_max_mins, "data/max_mins.rds")
   write_csv(df_max_mins, "data/max_mins.csv")
