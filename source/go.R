@@ -46,6 +46,17 @@ query_function <- function(query, convert_to_chr = FALSE) {
 #   ) |> 
 #   write_rds("data/max_mins.rds")
 
+# track_max <- read_file(file = "source/track_max.sql")
+# df_max <- query_function(track_max)
+# track_min <- read_file(file = "source/track_min.sql")
+# df_min <- query_function(track_min)
+# df_max_min_over_time <- df_max |> 
+#   mutate(type = "MAX") |> 
+#   bind_rows(df_min |> mutate(type = "MIN"))
+# df_max_min_over_time |> write_rds("data/max_mins_over_time.rds")
+# df_max_min_over_time |> write_csv("data/max_mins_over_time.csv")
+
+
 df_max_mins <- read_rds("data/max_mins.rds")
 df_max_mins_overall <- df_max_mins |> 
   group_by(REGIONID) |> 
@@ -134,6 +145,51 @@ if (nrow(df_check) > 0) {
   
   write_rds(df_max_mins, "data/max_mins.rds")
   write_csv(df_max_mins, "data/max_mins.csv")
+  
+  df_max_min_over_time <- read_rds("data/max_mins_over_time.rds")
+  
+  # For new maximums
+  if ("MAX" %in% df_check$TYPE) {
+    max_records <- df_check |> 
+      filter(TYPE == "MAX") |> 
+      select(-TOT_MIN, -TOT_MAX, -INT_MIN, -INT_MAX) |> 
+      left_join(df_max_mins_overall, by = "REGIONID") |> 
+      filter(OPERATIONAL_DEMAND_MAX > TOT_MAX) |> 
+      select(REGIONID, INTERVAL_DATETIME_MAX, OPERATIONAL_DEMAND_MAX) |> 
+      rename(
+        INTERVAL_DATETIME = INTERVAL_DATETIME_MAX,
+        OPERATIONAL_DEMAND = OPERATIONAL_DEMAND_MAX
+      ) |> 
+      mutate(type = "MAX")
+    
+    if(nrow(max_records) > 0) {
+      df_max_min_over_time <- bind_rows(df_max_min_over_time, max_records)
+    }
+  }
+  
+  # For new minimums
+  if ("MIN" %in% df_check$TYPE) {
+    min_records <- df_check |> 
+      filter(TYPE == "MIN") |> 
+      select(-TOT_MIN, -TOT_MAX, -INT_MIN, -INT_MAX) |> 
+      left_join(df_max_mins_overall, by = "REGIONID") |> 
+      filter(OPERATIONAL_DEMAND_MIN < TOT_MIN) |> 
+      select(REGIONID, INTERVAL_DATETIME_MIN, OPERATIONAL_DEMAND_MIN) |> 
+      rename(
+        INTERVAL_DATETIME = INTERVAL_DATETIME_MIN,
+        OPERATIONAL_DEMAND = OPERATIONAL_DEMAND_MIN
+      ) |> 
+      mutate(type = "MIN")
+    
+    if(nrow(min_records) > 0) {
+      df_max_min_over_time <- bind_rows(df_max_min_over_time, min_records)
+    }
+  }
+  
+  write_rds(df_max_min_over_time, "data/max_mins_over_time.rds")
+  write_csv(df_max_min_over_time, "data/max_mins_over_time.csv")
+  
+  
 
   
 }
