@@ -122,6 +122,8 @@ if (nrow(df_check) > 0) {
     select(REGIONID, MONTH, TOT_MIN, TOT_MAX)
   
   write_rds(df_max_mins, "data/max_mins.rds")
+  write_csv(df_max_mins, "data/max_mins.csv")
+
   
 }
 
